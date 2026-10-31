@@ -1,31 +1,31 @@
 // swift-tools-version: 5.9
-// Dyplink iOS SDK — Swift Package Manager manifest.
+// Chumbaq iOS SDK — Swift Package Manager manifest.
 //
 // Four products mirror the four Android SDK modules:
 //
-//   DyplinkCore     — identity, events, deep links, offline queue, sessions.
-//                     The minimal module: `.package(url: ...)` + `.product(name: "DyplinkCore")`.
-//   DyplinkPush     — APNs push token registration. Depends on DyplinkCore.
-//   DyplinkBanners  — native `BannerCarouselView` (UICollectionView). Depends on DyplinkCore.
-//   DyplinkMessages — in-app message overlay. Depends on DyplinkCore.
+//   ChumbaqCore     — identity, events, deep links, offline queue, sessions.
+//                     The minimal module: `.package(url: ...)` + `.product(name: "ChumbaqCore")`.
+//   ChumbaqPush     — APNs push token registration. Depends on ChumbaqCore.
+//   ChumbaqBanners  — native `BannerCarouselView` (UICollectionView). Depends on ChumbaqCore.
+//   ChumbaqMessages — in-app message overlay. Depends on ChumbaqCore.
 //
-// Apps pick only the products they need; DyplinkCore is the only mandatory one.
+// Apps pick only the products they need; ChumbaqCore is the only mandatory one.
 //
 // Min iOS 14 — required for async/await, NWPathMonitor, modern UICollectionView.
 
 import PackageDescription
 
 let package = Package(
-    name: "Dyplink",
+    name: "Chumbaq",
     defaultLocalization: "en",
     platforms: [
         .iOS(.v14),
     ],
     products: [
-        .library(name: "DyplinkCore", targets: ["DyplinkCore"]),
-        .library(name: "DyplinkPush", targets: ["DyplinkPush"]),
-        .library(name: "DyplinkBanners", targets: ["DyplinkBanners"]),
-        .library(name: "DyplinkMessages", targets: ["DyplinkMessages"]),
+        .library(name: "ChumbaqCore", targets: ["ChumbaqCore"]),
+        .library(name: "ChumbaqPush", targets: ["ChumbaqPush"]),
+        .library(name: "ChumbaqBanners", targets: ["ChumbaqBanners"]),
+        .library(name: "ChumbaqMessages", targets: ["ChumbaqMessages"]),
     ],
     dependencies: [
         // No external dependencies — URLSession + Foundation only.
@@ -33,49 +33,49 @@ let package = Package(
     targets: [
         // ── Core ───────────────────────────────────────────────────────
         .target(
-            name: "DyplinkCore",
-            path: "Sources/DyplinkCore"
+            name: "ChumbaqCore",
+            path: "Sources/ChumbaqCore"
         ),
         .testTarget(
-            name: "DyplinkCoreTests",
-            dependencies: ["DyplinkCore"],
-            path: "Tests/DyplinkCoreTests"
+            name: "ChumbaqCoreTests",
+            dependencies: ["ChumbaqCore"],
+            path: "Tests/ChumbaqCoreTests"
         ),
 
         // ── Push ───────────────────────────────────────────────────────
         .target(
-            name: "DyplinkPush",
-            dependencies: ["DyplinkCore"],
-            path: "Sources/DyplinkPush"
+            name: "ChumbaqPush",
+            dependencies: ["ChumbaqCore"],
+            path: "Sources/ChumbaqPush"
         ),
         .testTarget(
-            name: "DyplinkPushTests",
-            dependencies: ["DyplinkPush", "DyplinkCore"],
-            path: "Tests/DyplinkPushTests"
+            name: "ChumbaqPushTests",
+            dependencies: ["ChumbaqPush", "ChumbaqCore"],
+            path: "Tests/ChumbaqPushTests"
         ),
 
         // ── Banners ────────────────────────────────────────────────────
         .target(
-            name: "DyplinkBanners",
-            dependencies: ["DyplinkCore"],
-            path: "Sources/DyplinkBanners"
+            name: "ChumbaqBanners",
+            dependencies: ["ChumbaqCore"],
+            path: "Sources/ChumbaqBanners"
         ),
         .testTarget(
-            name: "DyplinkBannersTests",
-            dependencies: ["DyplinkBanners", "DyplinkCore"],
-            path: "Tests/DyplinkBannersTests"
+            name: "ChumbaqBannersTests",
+            dependencies: ["ChumbaqBanners", "ChumbaqCore"],
+            path: "Tests/ChumbaqBannersTests"
         ),
 
         // ── Messages ───────────────────────────────────────────────────
         .target(
-            name: "DyplinkMessages",
-            dependencies: ["DyplinkCore"],
-            path: "Sources/DyplinkMessages"
+            name: "ChumbaqMessages",
+            dependencies: ["ChumbaqCore"],
+            path: "Sources/ChumbaqMessages"
         ),
         .testTarget(
-            name: "DyplinkMessagesTests",
-            dependencies: ["DyplinkMessages", "DyplinkCore"],
-            path: "Tests/DyplinkMessagesTests"
+            name: "ChumbaqMessagesTests",
+            dependencies: ["ChumbaqMessages", "ChumbaqCore"],
+            path: "Tests/ChumbaqMessagesTests"
         ),
     ]
 )

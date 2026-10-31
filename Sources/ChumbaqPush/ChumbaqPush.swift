@@ -1,0 +1,292 @@
+import Foundation
+import UserNotifications
+import ChumbaqCore
+
+/// Optional push notification module for the Chumbaq iOS SDK.
+///
+/// Unlike the Android SDK which wraps FCM, the iOS SDK wraps Apple
+/// Push Notification service (APNs). The developer is responsible for:
+///
+/// 1. Calling `UIApplication.shared.registerForRemoteNotifications()`
+/// 2. Forwarding the device token to `ChumbaqPush.shared.registerToken(_:)`
+///    from `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`
+/// 3. Forwarding notification delegate callbacks to
+///    `reportNotificationDelivered(userInfo:)` and
+///    `reportNotificationClicked(userInfo:)` so campaign click-through
+///    can be measured. An SDK can't intercept these on its own — the
+///    host app's `UNUserNotificationCenterDelegate` owns them.
+///
+/// Reporting a click also routes the campaign's destination URL, if it
+/// carries one, to `Chumbaq.shared.handleCampaignDeepLink(url:)` — so a
+/// tap reaches `Chumbaq.shared.onDeepLink` / `deepLinkListener` alongside
+/// links opened from Universal Links and deferred matching. Apps that
+/// would rather route the tap themselves can ignore those listeners and
+/// use the URL `reportNotificationClicked(userInfo:)` returns.
+///
+/// Usage:
+/// ```swift
+/// // AppDelegate.swift
+/// func application(_ app: UIApplication,
+///                  didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
+///     let tokenString = token.map { String(format: "%02x", $0) }.joined()
+///     Task { try? await ChumbaqPush.shared.registerToken(tokenString) }
+/// }
+///
+/// // UNUserNotificationCenterDelegate
+/// func userNotificationCenter(_ center: UNUserNotificationCenter,
+///                              willPresent notification: UNNotification,
+///                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+///     ChumbaqPush.shared.reportNotificationDelivered(userInfo: notification.request.content.userInfo)
+///     completionHandler([.banner, .sound])
+/// }
+///
+/// func userNotificationCenter(_ center: UNUserNotificationCenter,
+///                              didReceive response: UNNotificationResponse,
+///                              withCompletionHandler completionHandler: @escaping () -> Void) {
+///     // Reports the click — carrying the action id when one of the
+///     // campaign's buttons was pressed — and delivers the destination to
+///     // `Chumbaq.shared.onDeepLink`. It is also returned:
+///     //   let url = ChumbaqPush.shared.reportNotificationResponse(response)
+///     ChumbaqPush.shared.reportNotificationResponse(response)
+///     completionHandler()
+/// }
+///
+/// // Background/silent pushes instead arrive via:
+/// func application(_ application: UIApplication,
+///                  didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+///                  fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+///     ChumbaqPush.shared.reportNotificationDelivered(userInfo: userInfo)
+///     completionHandler(.newData)
+/// }
+/// ```
+public final class ChumbaqPush: @unchecked Sendable {
+
+    public static let shared = ChumbaqPush()
+
+    /// Key under which outgoing Chumbaq campaign pushes carry their
+    /// campaign id in the notification's data payload / `userInfo`.
+    private static let campaignIdKey = "chumbaq_campaign_id"
+
+    /// Keys under which a campaign carries its destination URL, in the
+    /// order Android's `PushNotificationHandler` reads them.
+    private static let deepLinkUrlKeys = ["deep_link_url", "link"]
+
+    private let lock = NSLock()
+    private var _isInitialized = false
+    private var tokenManager = PushTokenManager()
+    private let eventReporter = PushEventReporter()
+
+    private init() {}
+
+    // ── Lifecycle ──────────────────────────────────────────────────────
+
+    /// `true` after `initialize()` has been called.
+    public var isInitialized: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return _isInitialized
+    }
+
+    /// Initialize the push module. Requires `Chumbaq.shared.initialize`
+    /// to have been called first.
+    public func initialize() {
+        lock.lock()
+        defer { lock.unlock() }
+        precondition(Chumbaq.shared.isInitialized,
+                     "Chumbaq.shared.initialize(config:) must be called before ChumbaqPush.shared.initialize()")
+        if _isInitialized { return }
+        _isInitialized = true
+    }
+
+    /// Whether a push token is currently registered with the backend.
+    public var isRegistered: Bool { tokenManager.isRegistered }
+
+    // ── Token management ───────────────────────────────────────────────
+
+    /// Register an APNs device token with the Chumbaq backend.
+    ///
+    /// Call from `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`.
+    /// The token should be the hex-encoded string representation of the
+    /// `Data` token.
+    public func registerToken(_ token: String) async throws {
+        guard isInitialized else {
+            throw ChumbaqError.notInitialized("ChumbaqPush not initialized")
+        }
+        try await tokenManager.registerToken(token)
+    }
+
+    /// Convenience: accepts the raw `Data` token directly and
+    /// hex-encodes it.
+    public func registerToken(_ tokenData: Data) async throws {
+        let hex = tokenData.map { String(format: "%02x", $0) }.joined()
+        try await registerToken(hex)
+    }
+
+    /// Unregister the current APNs token from the Chumbaq backend.
+    /// Call on user logout.
+    public func unregisterToken() async throws {
+        guard isInitialized else {
+            throw ChumbaqError.notInitialized("ChumbaqPush not initialized")
+        }
+        try await tokenManager.unregisterToken()
+    }
+
+    // ── Push event reporting ──────────────────────────────────────────
+
+    /// Report that a Chumbaq campaign push was delivered to the device.
+    ///
+    /// Call from `userNotificationCenter(_:willPresent:withCompletionHandler:)`
+    /// (foreground) or `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`
+    /// (background/silent pushes). Does nothing if `userInfo` doesn't
+    /// carry a Chumbaq campaign id — i.e. the push wasn't sent by a
+    /// Chumbaq campaign. Fire-and-forget: never throws, never blocks.
+    public func reportNotificationDelivered(userInfo: [AnyHashable: Any]) {
+        reportEvent(.delivered, userInfo: userInfo)
+    }
+
+    /// Report that the user tapped a Chumbaq campaign push notification and
+    /// route the destination URL the campaign carries, if any.
+    ///
+    /// Call from `userNotificationCenter(_:didReceive:withCompletionHandler:)`,
+    /// or let `reportNotificationResponse(_:)` do it. Returns that
+    /// destination URL, so an app that would rather route taps itself can do
+    /// so without subscribing to `Chumbaq.shared.onDeepLink`, or `nil` when
+    /// the push carries none.
+    ///
+    /// Pass `actionIdentifier` when the tap came from one of the campaign's
+    /// buttons — `UNNotificationResponse.actionIdentifier`. It is reported as
+    /// `metadata.actionId`, the field Android sends, so the dashboard can
+    /// tell "pressed Buy now" from "tapped the notification"; and the
+    /// button's own destination takes precedence over the campaign's, as it
+    /// does on Android.
+    ///
+    /// The two halves are independent: reporting does nothing when `userInfo`
+    /// carries no Chumbaq campaign id, routing does nothing when it carries no
+    /// destination URL, and a failure of either — a dropped analytics request,
+    /// say — leaves the other untouched. Fire-and-forget: never throws, never
+    /// blocks.
+    @discardableResult
+    public func reportNotificationClicked(
+        userInfo: [AnyHashable: Any],
+        actionIdentifier: String? = nil
+    ) -> String? {
+        let actionId = Self.campaignActionId(actionIdentifier)
+        reportEvent(.click, userInfo: userInfo, actionId: actionId)
+        return routeDeepLink(userInfo: userInfo, actionId: actionId)
+    }
+
+    /// Report a notification response and route where it leads.
+    ///
+    /// The whole of `userNotificationCenter(_:didReceive:withCompletionHandler:)`
+    /// in one call, and the one to prefer there — it tells the three kinds of
+    /// response apart, which the raw `userInfo` cannot:
+    ///
+    /// - a tap on one of the campaign's buttons reports a `click` carrying
+    ///   that button's id, and routes the button's own destination;
+    /// - a tap on the notification itself reports a plain `click`;
+    /// - clearing it away reports `dismissed` and routes nothing, since the
+    ///   user chose not to go there.
+    ///
+    /// Returns the destination it routed, or `nil` when there was none.
+    @discardableResult
+    public func reportNotificationResponse(_ response: UNNotificationResponse) -> String? {
+        let userInfo = response.notification.request.content.userInfo
+
+        if response.actionIdentifier == UNNotificationDismissActionIdentifier {
+            reportEvent(.dismissed, userInfo: userInfo)
+            return nil
+        }
+        return reportNotificationClicked(
+            userInfo: userInfo,
+            actionIdentifier: response.actionIdentifier
+        )
+    }
+
+    /// Report an arbitrary push engagement event — for `impression` and
+    /// `dismissed`, which don't map to a single delegate callback the
+    /// way delivery and clicks do. Does nothing if `userInfo` doesn't
+    /// carry a Chumbaq campaign id. Fire-and-forget: never throws,
+    /// never blocks.
+    public func reportNotificationEvent(_ event: PushEvent, userInfo: [AnyHashable: Any]) {
+        reportEvent(event, userInfo: userInfo)
+    }
+
+    /// Hands the campaign's destination URL to
+    /// `Chumbaq.shared.handleCampaignDeepLink(url:)`, reading the same data
+    /// keys in the same order as Android's `PushNotificationHandler`:
+    /// `deep_link_url` first, then `link`. Returns the URL it found.
+    ///
+    /// Delivering it automatically is deliberate. Android opens the URL itself
+    /// on tap without consulting the host app, so an iOS SDK that only reported
+    /// the click would leave the deep link on every push campaign dead. Nor can
+    /// this duplicate routing an app already does: the data keys aren't public
+    /// API, so an app never told about them can't be reading them out of
+    /// `userInfo` today.
+    private func routeDeepLink(userInfo: [AnyHashable: Any], actionId: String? = nil) -> String? {
+        guard isInitialized else { return nil }
+
+        // A button's own destination wins over the campaign's, and falls
+        // back to it when the button has none — the order Android's
+        // `PushNotificationHandler` builds its action intents in.
+        let buttonDestination = actionId
+            .flatMap { ChumbaqPushActions.action(withId: $0, in: userInfo) }
+            .flatMap(\.deepLinkUrl)
+
+        // `userInfo` comes from the OS untyped — every key may be absent or
+        // hold something other than the string we expect.
+        guard let raw = buttonDestination ?? Self.deepLinkUrlKeys
+            .lazy
+            .compactMap({ userInfo[$0] as? String })
+            .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
+        else { return nil }
+
+        // A URL the OS can't even parse is still handed back to the caller —
+        // it is what the campaign sent — but there is nothing to route.
+        if let url = URL(string: raw) {
+            Chumbaq.shared.handleCampaignDeepLink(url: url)
+        }
+        return raw
+    }
+
+    private func reportEvent(
+        _ event: PushEvent,
+        userInfo: [AnyHashable: Any],
+        actionId: String? = nil
+    ) {
+        guard isInitialized else { return }
+        guard let campaignId = userInfo[Self.campaignIdKey] as? String else {
+            // Not a Chumbaq campaign push — nothing to report.
+            return
+        }
+        Task {
+            await eventReporter.report(
+                campaignId: campaignId,
+                type: event.rawValue,
+                actionId: actionId
+            )
+        }
+    }
+
+    /// The campaign's own action id, or `nil` for the system identifiers.
+    ///
+    /// `UNNotificationDefaultActionIdentifier` is iOS saying "the
+    /// notification itself was tapped", not the id of a button — reporting
+    /// it as one would invent a button called
+    /// `com.apple.UNNotificationDefaultActionIdentifier` in every campaign's
+    /// per-action breakdown.
+    private static func campaignActionId(_ actionIdentifier: String?) -> String? {
+        guard let actionIdentifier = actionIdentifier,
+              actionIdentifier != UNNotificationDefaultActionIdentifier,
+              actionIdentifier != UNNotificationDismissActionIdentifier,
+              !actionIdentifier.isEmpty
+        else { return nil }
+        return actionIdentifier
+    }
+
+    /// Test-only reset.
+    internal func resetForTesting() {
+        lock.lock()
+        _isInitialized = false
+        tokenManager = PushTokenManager()
+        lock.unlock()
+    }
+}
