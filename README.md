@@ -1,7 +1,7 @@
-# Dyplink iOS SDK
+# Chumbaq iOS SDK
 
 Deep linking, deferred deep links, attribution, events, in-app messages,
-banners, and push notifications for Dyplink.
+banners, and push notifications for Chumbaq.
 
 Requires iOS 14. No external dependencies — `URLSession` and `Foundation`
 only.
@@ -11,34 +11,34 @@ only.
 Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/sohelyadav/dyplink-ios-sdk", from: "0.1.0")
+.package(url: "https://github.com/sohelyadav/chumbaq-ios-sdk", from: "0.1.0")
 ```
 
-Four products; `DyplinkCore` is the only mandatory one, and each of the
+Four products; `ChumbaqCore` is the only mandatory one, and each of the
 others depends on it. Take only what the app uses:
 
 | Product | What it does |
 |---|---|
-| `DyplinkCore` | Identity, events, deep links, deferred matching, offline queue, sessions |
-| `DyplinkPush` | APNs token registration, campaign engagement, rich notification rendering |
-| `DyplinkBanners` | `BannerCarouselView`, a native carousel of a widget's banners |
-| `DyplinkMessages` | In-app messages: modal, sheet, full screen, and top and bottom banners |
+| `ChumbaqCore` | Identity, events, deep links, deferred matching, offline queue, sessions |
+| `ChumbaqPush` | APNs token registration, campaign engagement, rich notification rendering |
+| `ChumbaqBanners` | `BannerCarouselView`, a native carousel of a widget's banners |
+| `ChumbaqMessages` | In-app messages: modal, sheet, full screen, and top and bottom banners |
 
 ## Getting started
 
 ```swift
-import DyplinkCore
+import ChumbaqCore
 
-let config = DyplinkConfig.Builder(
-    baseUrl: "https://your-dyplink-host",
+let config = ChumbaqConfig.Builder(
+    baseUrl: "https://your-chumbaq-host",
     apiKey: "<project API key>",
     projectId: "<project id>"
 ).build()
 
-Dyplink.shared.initialize(config: config)
+Chumbaq.shared.initialize(config: config)
 
 // Where a deep link should take the app.
-Dyplink.shared.onDeepLink = { result in
+Chumbaq.shared.onDeepLink = { result in
     router.go(result)
 }
 ```
@@ -47,13 +47,13 @@ Then, from the app's own entry points:
 
 ```swift
 // A universal link or custom-scheme URL.
-Dyplink.shared.handleDeepLink(url: url)
+Chumbaq.shared.handleDeepLink(url: url)
 
 // After a fresh install, to claim the click that led to it.
-let match = await Dyplink.shared.matchDeferredDeepLink()
+let match = await Chumbaq.shared.matchDeferredDeepLink()
 
 // Who this is, once they log in.
-try await Dyplink.shared.identify(
+try await Chumbaq.shared.identify(
     IdentifyParams.Builder().externalUserId("u_42").build()
 )
 ```
@@ -61,13 +61,13 @@ try await Dyplink.shared.identify(
 ## In-app messages
 
 ```swift
-import DyplinkMessages
+import ChumbaqMessages
 
-DyplinkMessages.shared.messageListener = self
+ChumbaqMessages.shared.messageListener = self
 
-DyplinkMessages.shared.onAppOpen()              // app foreground
-DyplinkMessages.shared.onScreenView("Home")     // screen change
-DyplinkMessages.shared.onEvent("purchase")      // custom event
+ChumbaqMessages.shared.onAppOpen()              // app foreground
+ChumbaqMessages.shared.onScreenView("Home")     // screen change
+ChumbaqMessages.shared.onEvent("purchase")      // custom event
 ```
 
 The SDK draws the message itself, in whichever of the five layouts the
@@ -78,19 +78,19 @@ that routes its own links should do it there.
 ## Push notifications
 
 ```swift
-import DyplinkPush
+import ChumbaqPush
 
-DyplinkPush.shared.initialize()
-try await DyplinkPush.shared.registerToken(deviceToken)   // Data or String
+ChumbaqPush.shared.initialize()
+try await ChumbaqPush.shared.registerToken(deviceToken)   // Data or String
 
 // From the app's own notification handlers — the SDK never intercepts a
 // notification, it reports what it is handed.
-DyplinkPush.shared.reportNotificationDelivered(userInfo: userInfo)
+ChumbaqPush.shared.reportNotificationDelivered(userInfo: userInfo)
 
 // A tap, from `didReceive(_:withCompletionHandler:)`. Reports the click —
 // carrying which button was pressed, when one was — and hands back where it
 // leads, if anywhere.
-if let destination = DyplinkPush.shared.reportNotificationResponse(response) {
+if let destination = ChumbaqPush.shared.reportNotificationResponse(response) {
     router.go(destination)
 }
 ```
@@ -104,8 +104,8 @@ library. The SDK supplies the contents of both; the targets are the app's.
 
 | Extension | What it adds | Entry point |
 |---|---|---|
-| Notification **Service** | The campaign's image | `DyplinkNotificationService.populate(_:withContentHandler:)` |
-| Notification **Content** | Carousels and countdowns | `DyplinkNotificationContent.makeView(for:)` |
+| Notification **Service** | The campaign's image | `ChumbaqNotificationService.populate(_:withContentHandler:)` |
+| Notification **Content** | Carousels and countdowns | `ChumbaqNotificationContent.makeView(for:)` |
 
 Both files document exactly what the target and its `Info.plist` must say;
 read them before creating the targets, because every way of getting it wrong
@@ -122,7 +122,7 @@ build them from a payload, it only draws the buttons of the category the
 notification names. A campaign's buttons are authored in the dashboard, so
 there is no category for them to name, and the notification **service**
 extension above is what closes the gap: it registers a category carrying the
-campaign's `dyplink_actions` while the push is in flight. Add that extension
+campaign's `chumbaq_actions` while the push is in flight. Add that extension
 and the buttons appear; the host app's own categories are left untouched.
 
 Which category they go onto matters when the campaign also names an iOS
@@ -146,8 +146,8 @@ Two things outside the SDK decide whether they ever get the chance:
 
 ## Related SDKs
 
-- [Android SDK](https://github.com/sohelyadav/dyplink-android-sdk)
-- [Flutter SDK](https://github.com/sohelyadav/dyplink-flutter-sdk)
+- [Android SDK](https://github.com/sohelyadav/chumbaq-android-sdk)
+- [Flutter SDK](https://github.com/sohelyadav/chumbaq-flutter-sdk)
 
 ## License
 
