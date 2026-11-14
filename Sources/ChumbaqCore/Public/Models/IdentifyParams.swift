@@ -6,6 +6,7 @@ import Foundation
 /// ```swift
 /// let params = IdentifyParams.Builder()
 ///     .externalUserId("user-123")
+///     .userHash(hashFromYourServer)
 ///     .firstName("Jane")
 ///     .traits(["plan": "pro", "age": 34])
 ///     .build()
@@ -13,6 +14,10 @@ import Foundation
 public struct IdentifyParams: Sendable {
     public let distinctId: String?
     public let externalUserId: String?
+    /// Required with `externalUserId`: HMAC-SHA256 of the external user id under the
+    /// project's identity secret, as hex, made on your own server (never put the secret
+    /// in the app). Without it the server refuses the external id.
+    public let userHash: String?
     public let firstName: String?
     public let lastName: String?
     public let phone: String?
@@ -38,6 +43,7 @@ public struct IdentifyParams: Sendable {
     public final class Builder {
         private var _distinctId: String?
         private var _externalUserId: String?
+        private var _userHash: String?
         private var _firstName: String?
         private var _lastName: String?
         private var _phone: String?
@@ -64,6 +70,7 @@ public struct IdentifyParams: Sendable {
 
         @discardableResult public func distinctId(_ v: String) -> Builder { _distinctId = v; return self }
         @discardableResult public func externalUserId(_ v: String) -> Builder { _externalUserId = v; return self }
+        @discardableResult public func userHash(_ v: String) -> Builder { _userHash = v; return self }
         @discardableResult public func firstName(_ v: String) -> Builder { _firstName = v; return self }
         @discardableResult public func lastName(_ v: String) -> Builder { _lastName = v; return self }
         @discardableResult public func phone(_ v: String) -> Builder { _phone = v; return self }
@@ -93,6 +100,7 @@ public struct IdentifyParams: Sendable {
             IdentifyParams(
                 distinctId: _distinctId,
                 externalUserId: _externalUserId,
+                userHash: _userHash,
                 firstName: _firstName,
                 lastName: _lastName,
                 phone: _phone,

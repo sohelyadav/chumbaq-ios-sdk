@@ -86,12 +86,13 @@ internal final class IdentityManager {
     }
 
     /// Fires `/api/identity/link-device`. Failures are logged but not thrown.
-    func linkDevice(externalUserId: String) async {
+    func linkDevice(externalUserId: String, userHash: String) async {
         do {
             let body: [String: Any] = [
                 "projectId": projectId,
                 "deviceFingerprint": fingerprintProvider.fingerprint,
                 "externalUserId": externalUserId,
+                "userHash": userHash,
                 "platform": "ios",
             ]
             _ = try await requestExecutor.post(
@@ -123,7 +124,7 @@ internal final class IdentityManager {
 
     // ── Body builder ───────────────────────────────────────────────────
 
-    private func buildIdentifyBody(_ params: IdentifyParams) -> [String: Any] {
+    func buildIdentifyBody(_ params: IdentifyParams) -> [String: Any] {
         var body: [String: Any] = [
             "projectId": projectId,
             "deviceFingerprint": fingerprintProvider.fingerprint,
@@ -132,6 +133,7 @@ internal final class IdentityManager {
         ]
 
         if let v = params.externalUserId { body["externalUserId"] = v }
+        if let v = params.userHash { body["userHash"] = v }
         if let v = params.firstName { body["firstName"] = v }
         if let v = params.lastName { body["lastName"] = v }
         if let v = params.phone { body["phone"] = v }

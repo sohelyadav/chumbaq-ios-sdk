@@ -54,9 +54,14 @@ let match = await Chumbaq.shared.matchDeferredDeepLink()
 
 // Who this is, once they log in.
 try await Chumbaq.shared.identify(
-    IdentifyParams.Builder().externalUserId("u_42").build()
+    IdentifyParams.Builder().externalUserId("u_42").userHash(hashFromYourServer).build()
 )
 ```
+
+An external user id must come with a `userHash`: HMAC-SHA256 of the id under your
+project's identity secret (API keys page), made on **your server**, never in the app.
+Without it the server refuses the identify, so nobody holding your app's key can claim
+to be one of your users.
 
 ## In-app messages
 
