@@ -151,6 +151,7 @@ internal final class IdentityManager {
         if let v = params.installCampaign { body["installCampaign"] = v }
         if let v = params.emailOptIn { body["emailOptIn"] = v }
         if let v = params.smsOptIn { body["smsOptIn"] = v }
+        if let v = params.whatsappOptIn { body["whatsappOptIn"] = v }
         if let v = params.pushOptIn { body["pushOptIn"] = v }
         if let v = params.gdprConsent { body["gdprConsent"] = v }
         if let v = params.doNotTrack { body["doNotTrack"] = v }

@@ -36,6 +36,7 @@ public struct IdentifyParams: Sendable {
     public let installCampaign: String?
     public let emailOptIn: Bool?
     public let smsOptIn: Bool?
+    public let whatsappOptIn: Bool?
     public let pushOptIn: Bool?
     public let gdprConsent: Bool?
     public let doNotTrack: Bool?
@@ -62,6 +63,7 @@ public struct IdentifyParams: Sendable {
         private var _installCampaign: String?
         private var _emailOptIn: Bool?
         private var _smsOptIn: Bool?
+        private var _whatsappOptIn: Bool?
         private var _pushOptIn: Bool?
         private var _gdprConsent: Bool?
         private var _doNotTrack: Bool?
@@ -92,6 +94,7 @@ public struct IdentifyParams: Sendable {
         @discardableResult public func installCampaign(_ v: String) -> Builder { _installCampaign = v; return self }
         @discardableResult public func emailOptIn(_ v: Bool) -> Builder { _emailOptIn = v; return self }
         @discardableResult public func smsOptIn(_ v: Bool) -> Builder { _smsOptIn = v; return self }
+        @discardableResult public func whatsappOptIn(_ v: Bool) -> Builder { _whatsappOptIn = v; return self }
         @discardableResult public func pushOptIn(_ v: Bool) -> Builder { _pushOptIn = v; return self }
         @discardableResult public func gdprConsent(_ v: Bool) -> Builder { _gdprConsent = v; return self }
         @discardableResult public func doNotTrack(_ v: Bool) -> Builder { _doNotTrack = v; return self }
@@ -119,6 +122,7 @@ public struct IdentifyParams: Sendable {
                 installCampaign: _installCampaign,
                 emailOptIn: _emailOptIn,
                 smsOptIn: _smsOptIn,
+                whatsappOptIn: _whatsappOptIn,
                 pushOptIn: _pushOptIn,
                 gdprConsent: _gdprConsent,
                 doNotTrack: _doNotTrack
