@@ -44,7 +44,7 @@ internal final class ApiClient {
     private static var userAgent: String {
         let bundle = Bundle.main.bundleIdentifier ?? "unknown"
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
-        return "ChumbaqSDK/0.2.0 (\(bundle)/\(version); iOS)"
+        return "ChumbaqSDK/0.2.1 (\(bundle)/\(version); iOS)"
     }
 }
 

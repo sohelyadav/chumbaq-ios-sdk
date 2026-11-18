@@ -11,7 +11,7 @@ only.
 Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/sohelyadav/chumbaq-ios-sdk", from: "0.2.0")
+.package(url: "https://github.com/sohelyadav/chumbaq-ios-sdk", from: "0.2.1")
 ```
 
 Four products; `ChumbaqCore` is the only mandatory one, and each of the
