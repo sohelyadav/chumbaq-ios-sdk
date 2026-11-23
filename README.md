@@ -11,7 +11,8 @@ only.
 For an iOS app that has never used Chumbaq.
 
 **1. Create a project.** In the Chumbaq dashboard, create a project and copy
-its project ID and its SDK (project API) key.
+its project ID and its SDK (project API) key. Use the app key, not a
+server-only key.
 
 **2. Add the package.** In Xcode, File → Add Package Dependencies, enter
 `https://github.com/sohelyadav/chumbaq-ios-sdk`, version `0.2.1` or later,
@@ -52,7 +53,7 @@ try await ChumbaqPush.shared.registerToken(deviceToken)
 Chumbaq. To report deliveries and taps, see [Push notifications](#push-notifications).
 
 **5. Identify the user.** Call `Chumbaq.shared.identify` with
-`externalUserId` and a `userHash` made on your server. See
+`externalUserId` and a `userHash` made on your server, never in the app. See
 [Getting started](#getting-started) for the call and how to make the hash.
 
 **6. Send a test push.** In the dashboard, open Push Notifications → Settings
