@@ -6,6 +6,59 @@ banners, and push notifications for Chumbaq.
 Requires iOS 14. No external dependencies — `URLSession` and `Foundation`
 only.
 
+## First push in 10 minutes
+
+For an iOS app that has never used Chumbaq.
+
+**1. Create a project.** In the Chumbaq dashboard, create a project and copy
+its project ID and its SDK (project API) key.
+
+**2. Add the package.** In Xcode, File → Add Package Dependencies, enter
+`https://github.com/sohelyadav/chumbaq-ios-sdk`, version `0.2.1` or later,
+and add `ChumbaqCore` and `ChumbaqPush` to the app target. See
+[Installation](#installation).
+
+**3. Set up APNs.** Add the Push Notifications capability in Xcode. In Apple
+Developer, create a key with Apple Push Notifications service enabled and
+download its `.p8` file. In the Chumbaq dashboard, open Push Notifications →
+Settings tab → Apple Push key (iOS) and enter the Key ID, your Team ID, the
+app's Bundle ID and the `.p8` file. Pick the Sandbox environment for a build
+run from Xcode, Production for TestFlight and the App Store.
+
+**4. Initialise the SDK and push.**
+
+```swift
+import ChumbaqCore
+import ChumbaqPush
+
+Chumbaq.shared.initialize(config: ChumbaqConfig.Builder(
+    baseUrl: "https://your-chumbaq-host",
+    apiKey: "<SDK key>",
+    projectId: "<project id>"
+).build())
+ChumbaqPush.shared.initialize()   // after Chumbaq.shared.initialize
+```
+
+The SDK does not ask for notification permission; your app does, with
+`UNUserNotificationCenter.current().requestAuthorization(options:)` and then
+`UIApplication.shared.registerForRemoteNotifications()`. Hand the token to
+Chumbaq in `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`:
+
+```swift
+try await ChumbaqPush.shared.registerToken(deviceToken)
+```
+
+`ChumbaqPush.shared.isRegistered` turns `true` once the token has reached
+Chumbaq. To report deliveries and taps, see [Push notifications](#push-notifications).
+
+**5. Identify the user.** Call `Chumbaq.shared.identify` with
+`externalUserId` and a `userHash` made on your server. See
+[Getting started](#getting-started) for the call and how to make the hash.
+
+**6. Send a test push.** In the dashboard, open Push Notifications → Settings
+tab → Test send, paste the device token (the hex string of `deviceToken`)
+and press Deliver.
+
 ## Installation
 
 Swift Package Manager:
