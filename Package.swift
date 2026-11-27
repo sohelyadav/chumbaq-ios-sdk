@@ -34,7 +34,11 @@ let package = Package(
         // ── Core ───────────────────────────────────────────────────────
         .target(
             name: "ChumbaqCore",
-            path: "Sources/ChumbaqCore"
+            path: "Sources/ChumbaqCore",
+            // Apple privacy manifest. Only Core touches a required-reason
+            // API (UserDefaults), and every other product links Core, so
+            // this one manifest covers the whole SDK.
+            resources: [.copy("PrivacyInfo.xcprivacy")]
         ),
         .testTarget(
             name: "ChumbaqCoreTests",
