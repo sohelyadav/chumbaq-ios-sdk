@@ -153,6 +153,8 @@ Two things outside the SDK decide whether they ever get the chance:
 
 These controls help you meet your duties under India's DPDP Act.
 
+The SDK ships an Apple privacy manifest (`PrivacyInfo.xcprivacy` in `ChumbaqCore`), so Xcode includes it in your app's privacy report.
+
 ### Consent and do-not-track
 
 Consent travels with `identify`; a field you leave unset changes nothing on
